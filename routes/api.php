@@ -37,3 +37,9 @@ Route::get('/get-soal-ujian', [UjianController::class, 'getListSoalByKategori'])
 
 //post jawaban
 Route::post('/answers', [UjianController::class, 'jawabSoal'])->middleware('auth:sanctum');
+
+//api content
+Route::apiResource('contents', \App\Http\Controllers\Api\ContentController::class)->middleware('auth:sanctum');
+
+//api materi
+Route::apiResource('materis', \App\Http\Controllers\Api\MateriController::class)->middleware('auth:sanctum');
