@@ -22,6 +22,12 @@ class UjianFactory extends Factory
             'nilai_verbal' => $this->faker->numberBetween(1, 100),
             'nilai_logika' => $this->faker->numberBetween(1, 100),
             'hasil' => $this->faker->randomElement(['Lulus', 'Tidak Lulus']),
+            'status_angka' => $this->faker->randomElement(['start', 'done']),
+            'status_verbal' => $this->faker->randomElement(['start', 'done']),
+            'status_logika' => $this->faker->randomElement(['start', 'done']),
+            'timer_angka' => $this->faker->numberBetween(1, 100),
+            'timer_verbal' => $this->faker->numberBetween(1, 100),
+            'timer_logika' => $this->faker->numberBetween(1, 100),
         ];
     }
 }

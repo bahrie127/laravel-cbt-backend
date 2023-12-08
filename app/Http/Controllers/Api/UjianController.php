@@ -109,9 +109,16 @@ class UjianController extends Controller
         // dd($soalIds);
 
         $soal = Soal::whereIn('id', $soalIds)->where('kategori', $request->kategori)->get();
-
+        //timer by kategori
+        $timer = $ujian->timer_angka;
+        if ($request->kategori == 'Verbal') {
+            $timer = $ujian->timer_verbal;
+        } else if ($request->kategori == 'Logika') {
+            $timer = $ujian->timer_logika;
+        }
         return response()->json([
             'message' => 'Berhasil mendapatkan soal',
+            'timer' => $timer,
             'data' => SoalResource::collection($soal),
         ]);
     }
