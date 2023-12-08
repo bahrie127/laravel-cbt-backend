@@ -145,4 +145,38 @@ class UjianController extends Controller
             'jawaban' => $ujianSoalList->kebenaran,
         ]);
     }
+
+    //hitung nilai ujian by kategori
+    public function hitungNilaiUjianByKategori(Request $request)
+    {
+        $kategori = $request->kategori;
+        $ujian = Ujian::where('user_id', $request->user()->id)->first();
+        $ujianSoalList = UjianSoalList::where('ujian_id', $ujian->id)->get();
+        //ujiansoallist by kategori
+        $ujianSoalList = $ujianSoalList->filter(function ($value, $key) use ($kategori) {
+            return $value->soal->kategori == $kategori;
+        });
+
+        //hitung nilai
+        $totalBenar = $ujianSoalList->where('kebenaran', true)->count();
+        $totalSoal = $ujianSoalList->count();
+        $nilai = ($totalBenar / $totalSoal) * 100;
+
+        $kategori_field = 'nilai_verbal';
+        if ($kategori == 'Numeric') {
+            $kategori_field = 'nilai_angka';
+        } else if ($kategori == 'Logika') {
+            $kategori_field = 'nilai_logika';
+        }
+
+        //update nilai
+        $ujian->update([
+            $kategori_field => $nilai
+        ]);
+
+        return response()->json([
+            'message' => 'Berhasil mendapatkan nilai',
+            'nilai' => $nilai,
+        ]);
+    }
 }
