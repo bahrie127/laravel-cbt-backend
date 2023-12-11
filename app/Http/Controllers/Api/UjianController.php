@@ -189,15 +189,24 @@ class UjianController extends Controller
         $nilai = ($totalBenar / $totalSoal) * 100;
 
         $kategori_field = 'nilai_verbal';
+        $status_field = 'status_verbal';
+        $timer_field = 'timer_verbal';
         if ($kategori == 'Numeric') {
             $kategori_field = 'nilai_angka';
+            $status_field = 'status_angka';
+            $timer_field = 'timer_angka';
         } else if ($kategori == 'Logika') {
             $kategori_field = 'nilai_logika';
+            $status_field = 'status_logika';
+            $timer_field = 'timer_logika';
         }
 
-        //update nilai
+        //update nilai, status, timer
         $ujian->update([
-            $kategori_field => $nilai
+            $kategori_field => $nilai,
+            $status_field => 'done',
+            $timer_field => 0,
+
         ]);
 
         return response()->json([
