@@ -201,13 +201,13 @@ class UjianController extends Controller
             $timer_field = 'timer_logika';
         }
 
-        //update nilai, status, timer
         $ujian->update([
             $kategori_field => $nilai,
             $status_field => 'done',
             $timer_field => 0,
-
         ]);
+
+        dd($ujian);
 
         return response()->json([
             'message' => 'Berhasil mendapatkan nilai',
