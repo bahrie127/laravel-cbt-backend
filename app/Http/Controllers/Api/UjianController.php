@@ -3,215 +3,151 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\SoalResource;
-use App\Models\Soal;
 use App\Models\Ujian;
-use App\Models\UjianSoalList;
+use App\Services\UjianService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class UjianController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(private UjianService $ujianService) {}
+
+    /** Ujian aktif peserta (null bila belum ada / sudah selesai semua). */
+    public function aktif(Request $request): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
-
-    //create ujian
-    public function createUjian(Request $request)
-    {
-        // get 20 soal angka random unique
-
-        $soalAngka = Soal::where('kategori', 'Numeric')->inRandomOrder()->limit(20)->get();
-        // get 20 soal verbal random
-        $soalVerbal = Soal::where('kategori', 'Verbal')->inRandomOrder()->limit(20)->get();
-        // get 20 soal logika random
-        $soalLogika = Soal::where('kategori', 'Logika')->inRandomOrder()->limit(20)->get();
-
-        //create ujian
-        $ujian = Ujian::create([
-            'user_id' => $request->user()->id,
-        ]);
-
-        foreach ($soalAngka as $soal) {
-            UjianSoalList::create([
-                'ujian_id' => $ujian->id,
-                'soal_id' => $soal->id,
-            ]);
-        }
-        foreach ($soalVerbal as $soal) {
-            UjianSoalList::create([
-                'ujian_id' => $ujian->id,
-                'soal_id' => $soal->id,
-            ]);
-        }
-
-        foreach ($soalLogika as $soal) {
-            UjianSoalList::create([
-                'ujian_id' => $ujian->id,
-                'soal_id' => $soal->id,
-            ]);
-        }
+        $ujian = $this->ujianService->aktif($request->user());
 
         return response()->json([
-            'message' => 'Ujian berhasil dibuat',
-            'data' => $ujian,
+            'message' => $ujian ? 'Ujian aktif ditemukan' : 'Belum ada ujian aktif',
+            'data' => $ujian ? $this->ujianService->ringkasan($ujian) : null,
         ]);
     }
 
-    //get list soal by kategori
-    public function getListSoalByKategori(Request $request)
+    /** Membuat ujian baru, atau mengembalikan ujian yang masih berjalan. */
+    public function createUjian(Request $request): JsonResponse
     {
-        $ujian = Ujian::where('user_id', $request->user()->id)->first();
-        if (!$ujian) {
-            return response()->json([
-                'message' => 'Ujian tidak ditemukan',
-                'data' => [],
-            ], 200);
-        }
-        $ujianSoalList = UjianSoalList::where('ujian_id', $ujian->id)->get();
-        $soalIds = $ujianSoalList->pluck('soal_id');
+        $ujian = $this->ujianService->buatAtauLanjutkan($request->user());
 
-        // dd($soalIds);
+        return response()->json([
+            'message' => $ujian->wasRecentlyCreated ? 'Ujian berhasil dibuat' : 'Melanjutkan ujian yang sedang berjalan',
+            'data' => $this->ujianService->ringkasan($ujian),
+        ], $ujian->wasRecentlyCreated ? 201 : 200);
+    }
 
-        $soal = Soal::whereIn('id', $soalIds)->where('kategori', $request->kategori)->get();
-        //timer by kategori
-        $timer = $ujian->timer_angka;
-        if ($request->kategori == 'Verbal') {
-            $timer = $ujian->timer_verbal;
-        } else if ($request->kategori == 'Logika') {
-            $timer = $ujian->timer_logika;
+    public function getListSoalByKategori(Request $request): JsonResponse
+    {
+        $kategori = $this->kategori($request);
+        $ujian = $this->ujianAtau404($request);
+
+        if ($ujian instanceof JsonResponse) {
+            return $ujian;
         }
+
+        $soal = $this->ujianService->bukaKategori($ujian, $kategori);
+        $sisa = $ujian->sisaDetikOf($kategori);
+
         return response()->json([
             'message' => 'Berhasil mendapatkan soal',
-            'timer' => $timer,
-            'data' => SoalResource::collection($soal),
+            'ujian_id' => $ujian->id,
+            'kategori' => $kategori,
+            'status' => $ujian->statusOf($kategori),
+            'timer' => (int) ceil($sisa / 60),
+            'sisa_detik' => $sisa,
+            'data' => $soal,
         ]);
     }
 
-    //jawab soal
-    public function jawabSoal(Request $request)
+    public function jawabSoal(Request $request): JsonResponse
     {
-        $validatedData = $request->validate([
-            'soal_id' => 'required',
-            'jawaban' => 'required'
+        $data = $request->validate([
+            'soal_id' => ['required', 'integer'],
+            'jawaban' => ['required', Rule::in(['a', 'b', 'c', 'd'])],
         ]);
 
+        $ujian = $this->ujianAtau404($request);
 
-        $ujian = Ujian::where('user_id', $request->user()->id)->first();
-        //if ujian not found return empty
-        if (!$ujian) {
-            return response()->json([
-                'message' => 'Ujian tidak ditemukan',
-                'data' => [],
-            ], 200);
-        }
-        $ujianSoalList = UjianSoalList::where('ujian_id', $ujian->id)->where('soal_id', $validatedData['soal_id'])->first();
-        $soal = Soal::where('id', $validatedData['soal_id'])->first();
-
-        //cek jawaban
-        if ($soal->kunci == $validatedData['jawaban']) {
-            //  $ujianSoalList->kebenaran = true;
-            $ujianSoalList->update(
-                [
-                    'kebenaran' => true
-                ]
-            );
-        } else {
-            // $ujianSoalList->kebenaran = false;
-            $ujianSoalList->update(
-                [
-                    'kebenaran' => false
-                ]
-            );
+        if ($ujian instanceof JsonResponse) {
+            return $ujian;
         }
 
+        $item = $this->ujianService->jawab($ujian, (int) $data['soal_id'], $data['jawaban']);
+
+        // Kebenaran jawaban sengaja tidak dikirim agar tidak bisa ditebak selama tes.
         return response()->json([
             'message' => 'Berhasil simpan jawaban',
-            'jawaban' => $ujianSoalList->kebenaran,
-        ], 200);
+            'data' => [
+                'soal_id' => $item->soal_id,
+                'jawaban' => $item->jawaban,
+                'sisa_detik' => $ujian->sisaDetikOf($item->soal->kategori),
+            ],
+        ]);
     }
 
-    //hitung nilai ujian by kategori
-    public function hitungNilaiUjianByKategori(Request $request)
+    public function hitungNilaiUjianByKategori(Request $request): JsonResponse
     {
-        $kategori = $request->kategori;
-        $ujian = Ujian::where('user_id', $request->user()->id)->first();
-        if (!$ujian) {
-            return response()->json([
-                'message' => 'Ujian tidak ditemukan',
-                'data' => [],
-            ], 200);
-        }
-        $ujianSoalList = UjianSoalList::where('ujian_id', $ujian->id)->get();
-        //ujiansoallist by kategori
-        $ujianSoalList = $ujianSoalList->filter(function ($value, $key) use ($kategori) {
-            return $value->soal->kategori == $kategori;
-        });
+        $kategori = $this->kategori($request);
+        $ujian = $this->ujianAtau404($request, includeFinished: true);
 
-        //hitung nilai
-        $totalBenar = $ujianSoalList->where('kebenaran', true)->count();
-        $totalSoal = $ujianSoalList->count();
-        $nilai = ($totalBenar / $totalSoal) * 100;
-
-        $kategori_field = 'nilai_verbal';
-        $status_field = 'status_verbal';
-        $timer_field = 'timer_verbal';
-        if ($kategori == 'Numeric') {
-            $kategori_field = 'nilai_angka';
-            $status_field = 'status_angka';
-            $timer_field = 'timer_angka';
-        } else if ($kategori == 'Logika') {
-            $kategori_field = 'nilai_logika';
-            $status_field = 'status_logika';
-            $timer_field = 'timer_logika';
+        if ($ujian instanceof JsonResponse) {
+            return $ujian;
         }
 
-        $ujian->update([
-            $kategori_field => $nilai,
-            $status_field => 'done',
-            $timer_field => 0,
-        ]);
-
-        dd($ujian);
+        $hasil = $this->ujianService->selesaikan($ujian, $kategori);
 
         return response()->json([
             'message' => 'Berhasil mendapatkan nilai',
-            'nilai' => $nilai,
-        ], 200);
+            'nilai' => $hasil['nilai'],
+            'data' => $hasil,
+            'ujian' => $this->ujianService->ringkasan($ujian->refresh()),
+        ]);
+    }
+
+    /** Hasil ujian terakhir + riwayat ujian yang sudah selesai. */
+    public function hasil(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $this->ujianService->aktif($user);
+
+        $terakhir = $user->ujians()->latest('id')->first();
+        $riwayat = $user->ujians()->whereNotNull('selesai_at')->latest('selesai_at')->limit(10)->get();
+
+        return response()->json([
+            'message' => 'Berhasil mendapatkan hasil ujian',
+            'data' => [
+                'terakhir' => $terakhir ? $this->ujianService->ringkasan($terakhir) : null,
+                'riwayat' => $riwayat->map(fn (Ujian $u) => [
+                    'id' => $u->id,
+                    'selesai_at' => $u->selesai_at?->toIso8601String(),
+                    'hasil' => $u->hasil,
+                    'nilai_angka' => $u->nilai_angka,
+                    'nilai_verbal' => $u->nilai_verbal,
+                    'nilai_logika' => $u->nilai_logika,
+                    'rata_rata' => (int) round(($u->nilai_angka + $u->nilai_verbal + $u->nilai_logika) / 3),
+                ])->values(),
+            ],
+        ]);
+    }
+
+    private function kategori(Request $request): string
+    {
+        return $request->validate([
+            'kategori' => ['required', Rule::in(UjianService::kategori())],
+        ])['kategori'];
+    }
+
+    private function ujianAtau404(Request $request, bool $includeFinished = false): Ujian|JsonResponse
+    {
+        $ujian = $this->ujianService->aktif($request->user());
+
+        // get-nilai boleh dipanggil ulang setelah kategori terakhir ditutup otomatis.
+        if (! $ujian && $includeFinished) {
+            $ujian = $request->user()->ujians()->latest('id')->first();
+        }
+
+        return $ujian ?? response()->json([
+            'message' => 'Ujian tidak ditemukan. Mulai ujian terlebih dahulu.',
+            'data' => [],
+        ], 404);
     }
 }

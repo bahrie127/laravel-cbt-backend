@@ -18,4 +18,9 @@ class Soal extends Model
         'jawaban_d',
         'kunci',
     ];
+
+    public function ujianSoalLists()
+    {
+        return $this->hasMany(UjianSoalList::class);
+    }
 }

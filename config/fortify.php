@@ -145,7 +145,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registrasi publik dimatikan: akun pengelola dibuat admin, peserta mendaftar lewat app.
         Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),

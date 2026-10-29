@@ -12,8 +12,16 @@ class UjianSoalList extends Model
     protected $fillable = [
         'ujian_id',
         'soal_id',
+        'jawaban',
         'kebenaran',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'kebenaran' => 'boolean',
+        ];
+    }
 
     public function ujian()
     {

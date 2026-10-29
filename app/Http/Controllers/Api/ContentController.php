@@ -3,55 +3,31 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Content;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ContentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request)
+    /** Semua data, atau satu data lewat ?id= (dipakai app). */
+    public function index(Request $request): JsonResponse
     {
-        //get all or by id
-        $contents = \App\Models\Content::when($request->id, function ($query, $id) {
-            return $query->where('id', $id);
-        })->get();
+        $contents = Content::query()
+            ->when($request->id, fn ($query, $id) => $query->where('id', $id))
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Content $item) => [
+                'id' => $item->id,
+                'title' => $item->title,
+                'content' => $item->content,
+                'image' => $item->image_url,
+                'created_at' => $item->created_at?->toIso8601String(),
+                'updated_at' => $item->updated_at?->toIso8601String(),
+            ]);
 
         return response()->json([
             'status' => 'success',
             'data' => $contents,
         ]);
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }

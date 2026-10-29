@@ -1,43 +1,35 @@
 <div class="main-sidebar sidebar-style-2">
     <aside id="sidebar-wrapper">
         <div class="sidebar-brand">
-            <a href="index.html">CBT TPA</a>
+            <a href="{{ route('home') }}">CBT TPA</a>
         </div>
         <div class="sidebar-brand sidebar-brand-sm">
-            <a href="index.html">CT</a>
+            <a href="{{ route('home') }}">TPA</a>
         </div>
         <ul class="sidebar-menu">
-            <li class="menu-header">Dashboard</li>
-            <li class="nav-item dropdown">
-                <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Dashboard</span></a>
-                <ul class="dropdown-menu">
-                    <li class='{{ Request::is('dashboard-general-dashboard') ? 'active' : '' }}'>
-                        <a class="nav-link" href="{{ url('dashboard-general-dashboard') }}">General Dashboard</a>
-                    </li>
-                    <li class="{{ Request::is('dashboard-ecommerce-dashboard') ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ url('dashboard-ecommerce-dashboard') }}">Ecommerce Dashboard</a>
-                    </li>
-                </ul>
+            <li class="menu-header">Ringkasan</li>
+            <li class="{{ Request::routeIs('home') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('home') }}"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
             </li>
-
-            <li class="nav-item dropdown">
-                <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Users</span></a>
-                <ul class="dropdown-menu">
-                    <li '>
-                        <a class="nav-link" href="{{ route('user.index') }}">All Users</a>
-                    </li>
-
-                </ul>
+            <li class="{{ Request::routeIs('hasil.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('hasil.index') }}"><i class="fas fa-clipboard-check"></i><span>Hasil Ujian</span></a>
             </li>
-            <li class="nav-item dropdown">
-                <a href="#" class="nav-link has-dropdown"><i class="fas fa-fire"></i><span>Soal</span></a>
-                <ul class="dropdown-menu">
-                    <li '>
-                        <a class="nav-link" href="{{ route('soal.index') }}">All Soal</a>
-                    </li>
-
-                </ul>
+            <li class="menu-header">Bank Soal & Materi</li>
+            <li class="{{ Request::routeIs('soal.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('soal.index') }}"><i class="fas fa-list-ol"></i><span>Soal</span></a>
             </li>
-
+            <li class="{{ Request::routeIs('materi.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('materi.index') }}"><i class="fas fa-book-open"></i><span>Materi</span></a>
+            </li>
+            <li class="{{ Request::routeIs('konten.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('konten.index') }}"><i class="fas fa-file-alt"></i><span>Konten App</span></a>
+            </li>
+            @can('kelola-pengguna')
+                <li class="menu-header">Pengaturan</li>
+                <li class="{{ Request::routeIs('user.*') ? 'active' : '' }}">
+                    <a class="nav-link" href="{{ route('user.index') }}"><i class="fas fa-users"></i><span>Pengguna</span></a>
+                </li>
+            @endcan
+        </ul>
     </aside>
 </div>

@@ -1,48 +1,35 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContentController;
+use App\Http\Controllers\Api\MateriController;
 use App\Http\Controllers\Api\UjianController;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
+| API app peserta (flutter_cbt_app). Semua respons JSON; tanpa login → 401.
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
 });
 
-//register
-Route::post('/register', [AuthController::class, 'register']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', fn (Request $request) => UserResource::make($request->user()));
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-//login
-Route::post('/login', [AuthController::class, 'login']);
+    // Ujian
+    Route::get('/ujian', [UjianController::class, 'aktif']);
+    Route::post('/create-ujian', [UjianController::class, 'createUjian']);
+    Route::get('/get-soal-ujian', [UjianController::class, 'getListSoalByKategori']);
+    Route::post('/answers', [UjianController::class, 'jawabSoal']);
+    Route::get('/get-nilai', [UjianController::class, 'hitungNilaiUjianByKategori']);
+    Route::get('/hasil-ujian', [UjianController::class, 'hasil']);
 
-//logout
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-
-//create ujian
-Route::post('/create-ujian', [UjianController::class, 'createUjian'])->middleware('auth:sanctum');
-
-//get soal ujian
-Route::get('/get-soal-ujian', [UjianController::class, 'getListSoalByKategori'])->middleware('auth:sanctum');
-
-//post jawaban
-Route::post('/answers', [UjianController::class, 'jawabSoal'])->middleware('auth:sanctum');
-
-//get hasil ujian
-Route::get('/get-nilai', [UjianController::class, 'hitungNilaiUjianByKategori'])->middleware('auth:sanctum');
-
-//api content
-Route::apiResource('contents', \App\Http\Controllers\Api\ContentController::class)->middleware('auth:sanctum');
-
-//api materi
-Route::apiResource('materis', \App\Http\Controllers\Api\MateriController::class)->middleware('auth:sanctum');
+    // Konten (Tentang Kami = id 1, Tips & Trik = id 2) & materi — hanya baca dari app.
+    Route::get('/contents', [ContentController::class, 'index']);
+    Route::get('/materis', [MateriController::class, 'index']);
+});

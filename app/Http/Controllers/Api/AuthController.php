@@ -13,19 +13,23 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validatedData = $request->validate([
-            'name' => 'required|max:55',
-            'email' => 'email|required|unique:users',
-            'password' => 'required'
+            'name' => 'required|string|max:55',
+            'email' => 'required|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+        ], [
+            'email.unique' => 'Email sudah terdaftar.',
+            'password.min' => 'Kata sandi minimal 8 karakter.',
         ]);
 
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
-            'role' => 'user'
+            'roles' => User::PESERTA,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'access_token' => $token,
             'user' => UserResource::make($user),
@@ -36,21 +40,22 @@ class AuthController extends Controller
     {
         $loginData = $request->validate([
             'email' => 'email|required',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         $user = User::where('email', $loginData['email'])->first();
 
-        if (!$user) {
+        // Pesan sama untuk email tak terdaftar & sandi salah.
+        if (! $user || ! Hash::check($loginData['password'], $user->password)) {
             return response()->json([
-                'message' => 'User not found'
+                'message' => 'Email atau kata sandi salah.',
             ], 401);
         }
 
-        if (!Hash::check($loginData['password'], $user->password)) {
+        if ($user->isPengelola()) {
             return response()->json([
-                'message' => 'Invalid credentials'
-            ], 401);
+                'message' => 'Akun admin/staf memakai panel web. Gunakan akun peserta di aplikasi.',
+            ], 403);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -66,7 +71,7 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Logout success'
+            'message' => 'Logout success',
         ]);
     }
 }

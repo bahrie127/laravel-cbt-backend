@@ -1,3 +1,3 @@
-  <div class="simple-footer">
-      Copyright &copy; FIC Batch 10
-  </div>
+<div class="simple-footer">
+    Panel pengelola CBT TPA &middot; Tes Potensi Akademik berbasis komputer
+</div>
